@@ -14,6 +14,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
+@st.cache_resource
 def initialize_rag_system():
     vectorstore = Chroma(
         embedding_function=OpenAIEmbeddings(model = EMBEDDING_MODEL),
@@ -62,3 +63,27 @@ def initialize_rag_system():
         |StrOutputParser()
     )
     return rag_chain, mmr_multi_retriever
+
+def query_rag(question):
+    try:
+        rag_chain, retriever = initialize_rag_system()
+        response = rag_chain.invoke(question)
+
+        # Obtener documents para mostrarlos
+        docs = retriever.get_relevant_documents(question)
+
+        # Formatear los documentos para mostrar
+        docs_info = []
+        for i, doc in enumerate(docs[:SEARCH_K], 1):
+            docs_info = {
+                "fragmento": i,
+                "contenido": doc.page_content[:1000] + "..." if len(doc.page_content) > 1000 else doc.page_content,
+                "fuente": doc.metadata.get("source", "Desconocida").split("\\")[-1],
+                "pagina": doc.metadata.get("page", "Desconocida")
+            ,
+            }
+
+            docs_info.append(docs_info)
+        return response, docs_info
+    except Exception as e:
+        return f"Error al procesar la consulta: {str(e)}", []
