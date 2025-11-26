@@ -24,7 +24,7 @@ print(f'Se crearon {len(docs_split)} chunks de texto.')
 
 
 vectorstore = Chroma.from_documents(
-    embedding_function=OpenAIEmbeddings(model = "text-embedding-3-small"),
+    embedding=OpenAIEmbeddings(model = "text-embedding-3-small"),
     documents=docs_split,
     persist_directory="C:\\Users\\romol\\Documents\\Software\\AI_AGENT\\santiago_ciber\\langhcain_langraph_course\\sistema_RAG\\chroma_db")
 
