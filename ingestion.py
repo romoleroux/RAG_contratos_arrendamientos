@@ -3,6 +3,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from config import *
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -24,8 +25,9 @@ print(f'Se crearon {len(docs_split)} chunks de texto.')
 
 
 vectorstore = Chroma.from_documents(
-    embedding=OpenAIEmbeddings(model = "text-embedding-3-small"),
+    embedding=OpenAIEmbeddings(model = EMBEDDING_MODEL),
     documents=docs_split,
-    persist_directory="C:\\Users\\romol\\Documents\\Software\\AI_AGENT\\santiago_ciber\\langhcain_langraph_course\\sistema_RAG\\chroma_db")
+    persist_directory=CHROMA_DB_PATH)
 
 print("¡Base de datos creada y guardada con éxito!")
+

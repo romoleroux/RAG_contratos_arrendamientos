@@ -1,3 +1,5 @@
+# rag_system.py
+
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings,ChatOpenAI
 from langchain.prompts import PromptTemplate
@@ -7,6 +9,7 @@ from langchain.retrievers.multi_query import MultiQueryRetriever
 import streamlit as st
 
 from config import *
+from prompts import *
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -22,3 +25,14 @@ def initialize_rag_system():
     # Retriever MMR (Maximal Marginal Relevance)
     base_retriever = vectorstore.as_retriever(search_type= SEARCH_TYPE, search_kwargs={"k":SEARCH_K, "fetch_k": MMR_FETCH_K,"lambda_mult": MMR_DIVERSITY_LAMBDA })
 
+    # prompt personalizado para multi query retriever
+    multi_query_prompt = PromptTemplate.from_template(MULTI_QUERY_PROMPT)
+
+    # MultiQueryRetriever con prompt personalizado
+    mmr_multi_retriever = MultiQueryRetriever.from_llm(
+        llm=llm_queries,
+        retriever=base_retriever,
+        prompt=multi_query_prompt
+    )
+
+    prompt = PromptTemplate.from_template(RAG_TEMPLATE)
