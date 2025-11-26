@@ -87,3 +87,14 @@ def query_rag(question):
         return response, docs_info
     except Exception as e:
         return f"Error al procesar la consulta: {str(e)}", []
+
+
+def get_retriever_info():
+    """Obtiene informacion sobre la configuracion del retriever"""
+    return {
+        "tipo": f"{SEARCH_TYPE.upper()}", 
+        "documento":SEARCH_K,
+        "diversidad": MMR_DIVERSITY_LAMBDA,
+        "candidatos" : MMR_FETCH_K,
+        "umbral" : None
+    }
