@@ -4,7 +4,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings,ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import StructuredOutputParser
+from langchain_core.output_parsers import StrOutputParser
 from langchain.retrievers.multi_query import MultiQueryRetriever
 import streamlit as st
 
@@ -36,3 +36,29 @@ def initialize_rag_system():
     )
 
     prompt = PromptTemplate.from_template(RAG_TEMPLATE)
+
+    # fucnipon para formatear y procesar los documents recuperados
+    def format_docs(docs):
+        formatted = []
+        for i, doc in enumerate(docs):
+            header = f'[fragmente {i}]'
+            if doc.metadata:
+                if 'source' in doc.metadata:
+                    source = doc.metadata['source'].split("\\")[-1] if '\\' in doc.metadata['source'] else doc.metadata['source']
+                    header += f' (source: {source})'
+                if 'page' in doc.metadata:
+                    header += f' (page: {doc.metadata["page"]})'
+            content = doc.page_content.strip()
+            formatted.append(f'{header}\n{content}\n')
+        return '\n'.join(formatted)
+
+    rag_chain = (
+        {
+            "context" : mmr_multi_retriever | format_docs,
+            "question": RunnablePassthrough()
+        } 
+        |prompt 
+        |llm_generation 
+        |StrOutputParser()
+    )
+    return rag_chain, mmr_multi_retriever
