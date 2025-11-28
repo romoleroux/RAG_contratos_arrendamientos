@@ -6,6 +6,7 @@ from langchain.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain.retrievers.multi_query import MultiQueryRetriever
+from langchain.retrievers import EnsembleRetriever
 import streamlit as st
 
 from config import *
@@ -26,6 +27,9 @@ def initialize_rag_system():
     # Retriever MMR (Maximal Marginal Relevance)
     base_retriever = vectorstore.as_retriever(search_type= SEARCH_TYPE, search_kwargs={"k":SEARCH_K, "fetch_k": MMR_FETCH_K,"lambda_mult": MMR_DIVERSITY_LAMBDA })
 
+    # Retriever adicina con similarity para comparar
+    similarity_retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": SEARCH_K})
+
     # prompt personalizado para multi query retriever
     multi_query_prompt = PromptTemplate.from_template(MULTI_QUERY_PROMPT)
 
@@ -35,6 +39,17 @@ def initialize_rag_system():
         retriever=base_retriever,
         prompt=multi_query_prompt
     )
+
+    # Ensemble retriever para combinar MMR y similarity
+    if ENABLE_HYBRID_SEARCH:
+        ensemble_retriever = EnsembleRetriever(
+            retrievers=[mmr_multi_retriever, similarity_retriever],
+            weights=[0.7, 0.3],
+            similarity_threshold=SIMILARITY_THRESHOLD
+        )
+        final_retriever = ensemble_retriever
+    else:
+        final_retriever = mmr_multi_retriever
 
     prompt = PromptTemplate.from_template(RAG_TEMPLATE)
 
@@ -55,7 +70,7 @@ def initialize_rag_system():
 
     rag_chain = (
         {
-            "context" : mmr_multi_retriever | format_docs,
+            "context" : final_retriever | format_docs,
             "question": RunnablePassthrough()
         } 
         |prompt 
@@ -75,7 +90,7 @@ def query_rag(question):
         # Formatear los documentos para mostrar
         docs_info = []
         for i, doc in enumerate(docs[:SEARCH_K], 1):
-            docs_info = {
+            doc_info = {
                 "fragmento": i,
                 "contenido": doc.page_content[:1000] + "..." if len(doc.page_content) > 1000 else doc.page_content,
                 "fuente": doc.metadata.get("source", "Desconocida").split("\\")[-1],
@@ -83,7 +98,7 @@ def query_rag(question):
             ,
             }
 
-            docs_info.append(docs_info)
+            docs_info.append(doc_info)
         return response, docs_info
     except Exception as e:
         return f"Error al procesar la consulta: {str(e)}", []
@@ -92,9 +107,9 @@ def query_rag(question):
 def get_retriever_info():
     """Obtiene informacion sobre la configuracion del retriever"""
     return {
-        "tipo": f"{SEARCH_TYPE.upper()}", 
+        "tipo": f"{SEARCH_TYPE.upper()}c+ MultiQuery" + (" + Hybrid" if ENABLE_HYBRID_SEARCH else ""), 
         "documento":SEARCH_K,
         "diversidad": MMR_DIVERSITY_LAMBDA,
         "candidatos" : MMR_FETCH_K,
-        "umbral" : None
+        "umbral" : SIMILARITY_THRESHOLD if ENABLE_HYBRID_SEARCH else "N/A"
     }
